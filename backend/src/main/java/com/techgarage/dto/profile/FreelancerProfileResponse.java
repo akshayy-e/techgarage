@@ -15,6 +15,8 @@ public class FreelancerProfileResponse {
     private Double hourlyRate;
     private Boolean availability;
     private Boolean verified;
+    private Boolean emailVerified;
+    private Integer profileCompletion;
     private Double rating;
     private Integer totalReviews;
     private Double totalEarnings;

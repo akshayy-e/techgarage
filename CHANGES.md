@@ -79,3 +79,25 @@ that'll let us pinpoint it precisely rather than guessing further.
   compiled here. Every new/edited file was reviewed by hand against the existing entity/DTO
   signatures for type correctness. Please run `mvn clean install` (or your IDE's build) as a
   first step after pulling this down.
+
+
+## Profile + Notifications Enhancement
+- Added authenticated `/api/users/me` GET/PUT endpoints for shared account details (name and phone).
+- Added editable client profile with account details.
+- Expanded freelancer profile with account details and skill CRUD-style controls (add, edit, delete skill tags) while preserving the existing comma-separated database field for deployment safety.
+- Freelancer public profiles continue to expose professional profile information to clients.
+- Added notification `Mark read`, `Mark all read`, and `Clear all` actions.
+- Secured notification read updates so a user cannot modify another user's notification.
+- Added authenticated notification deletion by current user.
+- Made the navbar avatar open the appropriate stakeholder profile.
+
+
+## Phase 2 — Freelancer marketplace
+
+- Added searchable/filterable freelancer directory.
+- Added verified and availability filters.
+- Added persistent client-to-freelancer invitations with acceptance/decline states.
+- Added invitation notifications.
+- Added client “Find Mechanics” navigation.
+- Added freelancer invitation cards/actions to the freelancer dashboard.
+- Added database uniqueness protection for duplicate invitations.

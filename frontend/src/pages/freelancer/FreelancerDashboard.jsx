@@ -4,31 +4,47 @@ import { problemService } from '../../services/problemService'
 import { jobService } from '../../services/jobService'
 import { freelancerService } from '../../services/freelancerService'
 import { proposalService } from '../../services/proposalService'
+import { invitationService } from '../../services/invitationService'
 import ProblemCard from '../../components/ProblemCard'
 import EmptyState from '../../components/EmptyState'
 import Spinner from '../../components/Spinner'
+
+function InvitationCard({ inv, onRefresh }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const respond = async (accepted) => {
+    setBusy(true); setError('')
+    try { await invitationService.respond(inv.id, accepted); await onRefresh() }
+    catch (err) { setError(err?.message || 'Unable to update invitation. Please try again.') }
+    finally { setBusy(false) }
+  }
+  return <div className="card"><div className="flex-between"><span className="eyebrow">INVITATION</span><span className="badge badge-neutral">{inv.status.replaceAll('_',' ')}</span></div><h3 style={{fontSize:16}}>{inv.problemTitle}</h3><p style={{fontSize:13}}>From {inv.clientName}</p>{inv.message && <p style={{fontSize:13}}>{inv.message}</p>}{error && <div className="alert alert-error">{error}</div>}{inv.status === 'PENDING' && <div className="flex gap-8"><button className="btn btn-primary btn-sm" disabled={busy} onClick={() => respond(true)}>{busy ? 'Updating…' : 'Accept'}</button><button className="btn btn-outline btn-sm" disabled={busy} onClick={() => respond(false)}>Decline</button></div>}</div>
+}
 
 export default function FreelancerDashboard() {
   const [problems, setProblems] = useState([])
   const [jobs, setJobs] = useState([])
   const [profile, setProfile] = useState(null)
   const [proposals, setProposals] = useState([])
+  const [invitations, setInvitations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     (async () => {
       try {
-        const [p, j, prof, props] = await Promise.all([
+        const [p, j, prof, props, invites] = await Promise.all([
           problemService.getAllOpen(),
           jobService.getMine(),
           freelancerService.getMine(),
           proposalService.getMine(),
+          invitationService.getMine(),
         ])
         setProblems(p)
         setJobs(j)
         setProfile(prof)
         setProposals(props)
+        setInvitations(invites)
       } catch (err) {
         setError(err.message)
       } finally {
@@ -73,6 +89,47 @@ export default function FreelancerDashboard() {
           </div>
         ))}
       </div>
+
+      <div className="flex-between mb-16">
+        <h2 style={{ fontSize: 19, margin: 0 }}>Active jobs</h2>
+        <span style={{ fontSize: 13.5, color: 'var(--color-ink-faint)' }}>{activeJobs.length} in progress</span>
+      </div>
+
+      {activeJobs.length === 0 ? (
+        <EmptyState
+          title="No active jobs yet"
+          subtitle="When a client accepts your proposal, the job will appear here with its status, chat, and work controls."
+          action={<Link to="/freelancer/proposals" className="btn btn-outline mt-8">View My Proposals</Link>}
+        />
+      ) : (
+        <div className="grid grid-3 mb-32">
+          {activeJobs.map((job) => (
+            <Link key={job.id} to={`/jobs/${job.id}`} className="card" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div className="flex-between mb-8">
+                <span className="eyebrow">JOB #{job.id}</span>
+                <span className="badge badge-neutral">{job.status.replaceAll('_', ' ')}</span>
+              </div>
+              <h3 style={{ fontSize: 16, marginBottom: 8 }}>{job.problemTitle}</h3>
+              <p style={{ fontSize: 13, color: 'var(--color-ink-muted)', marginBottom: 12 }}>
+                Client: {job.clientName}
+              </p>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                Open job → Chat · Status · Submit solution
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div className="flex-between mb-16">
+        <h2 style={{ fontSize: 19, margin: 0 }}>Client invitations</h2>
+        <span style={{ fontSize: 13.5, color: 'var(--color-ink-faint)' }}>{invitations.filter(i => i.status === 'PENDING').length} pending</span>
+      </div>
+      {invitations.length === 0 ? <EmptyState glyph="✉️" title="No invitations yet" subtitle="Clients can invite you directly from your public mechanic profile." /> : (
+        <div className="grid grid-3 mb-32">
+          {invitations.slice(0, 6).map(inv => <InvitationCard key={inv.id} inv={inv} onRefresh={async () => setInvitations(await invitationService.getMine())} />)}
+        </div>
+      )}
 
       <div className="flex-between mb-16">
         <h2 style={{ fontSize: 19, margin: 0 }}>Latest open problems</h2>

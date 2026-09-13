@@ -44,6 +44,7 @@ public class DataSeeder implements CommandLineRunner {
                 .role(Role.ADMIN)
                 .phone("+1-000-000-0000")
                 .enabled(true)
+                .emailVerified(true)
                 .build());
 
         // --- Clients ---
@@ -54,6 +55,7 @@ public class DataSeeder implements CommandLineRunner {
                 .role(Role.CLIENT)
                 .phone("+91-90000-00001")
                 .enabled(true)
+                .emailVerified(true)
                 .build());
 
         User client2 = userRepository.save(User.builder()
@@ -63,6 +65,7 @@ public class DataSeeder implements CommandLineRunner {
                 .role(Role.CLIENT)
                 .phone("+91-90000-00002")
                 .enabled(true)
+                .emailVerified(true)
                 .build());
 
         // --- Freelancers ---

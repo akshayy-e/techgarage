@@ -4,6 +4,7 @@ import { problemService } from '../../services/problemService'
 import { proposalService } from '../../services/proposalService'
 import Spinner from '../../components/Spinner'
 import { categoryLabels, formatCurrency, formatDate, humanStatus, problemTicketNumber, statusBadgeClass } from '../../utils/format'
+import { resolveFileUrl } from '../../services/api'
 
 export default function FreelancerProblemDetail() {
   const { id } = useParams()
@@ -19,9 +20,8 @@ export default function FreelancerProblemDetail() {
   useEffect(() => {
     (async () => {
       try {
-        const p = await problemService.getById(id)
+        const [p, mine] = await Promise.all([problemService.getById(id), proposalService.getMine()])
         setProblem(p)
-        const mine = await proposalService.getMine()
         setAlreadyApplied(mine.some((pr) => pr.problemId === Number(id)))
       } catch (err) {
         setError(err.message)
@@ -72,6 +72,7 @@ export default function FreelancerProblemDetail() {
               <span className="badge badge-neutral">{categoryLabels[problem.category] || problem.category}</span>
               {problem.technology && <span className="badge badge-neutral">{problem.technology}</span>}
               <span className="badge badge-neutral">{problem.priority}</span>
+              {problem.attachmentUrl && <a href={resolveFileUrl(problem.attachmentUrl)} target="_blank" rel="noreferrer" className="badge badge-neutral">📎 Attachment</a>}
             </div>
             <div className="grid grid-3">
               <div>

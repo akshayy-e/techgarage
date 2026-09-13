@@ -13,10 +13,14 @@ import com.techgarage.repository.*;
 import com.techgarage.security.SecurityUtil;
 import com.techgarage.service.AdminService;
 import com.techgarage.service.NotificationService;
+import com.techgarage.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,13 +35,14 @@ public class AdminServiceImpl implements AdminService {
     private final DisputeRepository disputeRepository;
     private final SecurityUtil securityUtil;
     private final NotificationService notificationService;
+    private final PaymentService paymentService;
 
     @Override
     public AdminStatsResponse getStats() {
         return AdminStatsResponse.builder()
                 .totalUsers(userRepository.count())
-                .totalFreelancers(userRepository.findByRole(Role.FREELANCER).size())
-                .totalClients(userRepository.findByRole(Role.CLIENT).size())
+                .totalFreelancers(userRepository.countByRole(Role.FREELANCER))
+                .totalClients(userRepository.countByRole(Role.CLIENT))
                 .totalProblems(problemRepository.count())
                 .activeJobs(jobRepository.count() - jobRepository.countByStatus(JobStatus.COMPLETED) - jobRepository.countByStatus(JobStatus.CANCELLED))
                 .completedJobs(jobRepository.countByStatus(JobStatus.COMPLETED))
@@ -48,17 +53,24 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public List<AdminUserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(this::toAdminUserResponse).collect(Collectors.toList());
+        List<User> users = userRepository.findAll();
+        return toAdminUserResponses(users);
     }
 
     @Override
     public List<AdminUserResponse> getClients() {
-        return userRepository.findByRole(Role.CLIENT).stream().map(this::toAdminUserResponse).collect(Collectors.toList());
+        return toAdminUserResponses(userRepository.findByRole(Role.CLIENT));
     }
 
     @Override
     public List<AdminUserResponse> getFreelancers() {
-        return userRepository.findByRole(Role.FREELANCER).stream().map(this::toAdminUserResponse).collect(Collectors.toList());
+        return toAdminUserResponses(userRepository.findByRole(Role.FREELANCER));
+    }
+
+    private List<AdminUserResponse> toAdminUserResponses(List<User> users) {
+        Map<Long, FreelancerProfile> profiles = freelancerProfileRepository.findAll().stream()
+                .collect(Collectors.toMap(p -> p.getUser().getId(), Function.identity()));
+        return users.stream().map(user -> toAdminUserResponse(user, profiles)).collect(Collectors.toList());
     }
 
     /**
@@ -66,12 +78,11 @@ public class AdminServiceImpl implements AdminService {
      * (from FreelancerProfile) when applicable so the Users screen reflects Verify/Suspend
      * actions instead of looking static no matter what an admin clicks.
      */
-    private AdminUserResponse toAdminUserResponse(User user) {
+    private AdminUserResponse toAdminUserResponse(User user, Map<Long, FreelancerProfile> profiles) {
         Boolean verified = null;
         if (user.getRole() == Role.FREELANCER) {
-            verified = freelancerProfileRepository.findByUserId(user.getId())
-                    .map(FreelancerProfile::getVerified)
-                    .orElse(false);
+            FreelancerProfile profile = profiles.get(user.getId());
+            verified = profile != null && Boolean.TRUE.equals(profile.getVerified());
         }
         return AdminUserResponse.builder()
                 .id(user.getId())
@@ -82,6 +93,7 @@ public class AdminServiceImpl implements AdminService {
                 .enabled(user.isEnabled())
                 .createdAt(user.getCreatedAt())
                 .verified(verified)
+                .emailVerified(user.isEmailVerified())
                 .build();
     }
 
@@ -101,7 +113,7 @@ public class AdminServiceImpl implements AdminService {
                         .expectedCompletionDate(p.getExpectedCompletionDate())
                         .status(p.getStatus())
                         .attachmentUrl(p.getAttachmentUrl())
-                        .proposalCount((long) proposalRepository.findByProblemIdOrderByCreatedAtDesc(p.getId()).size())
+                        .proposalCount((long) proposalRepository.countByProblemId(p.getId()))
                         .createdAt(p.getCreatedAt())
                         .updatedAt(p.getUpdatedAt())
                         .build()
@@ -133,6 +145,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     public void verifyFreelancer(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (user.getRole() != Role.FREELANCER) throw new com.techgarage.exception.BadRequestException("Only freelancer accounts can be verified");
+        if (!user.isEmailVerified()) throw new com.techgarage.exception.BadRequestException("Freelancer must verify their email before admin verification");
         FreelancerProfile profile = freelancerProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer profile not found"));
         profile.setVerified(true);
@@ -166,6 +181,12 @@ public class AdminServiceImpl implements AdminService {
         if (!participant) {
             throw new ForbiddenException("You are not a participant in this job");
         }
+        if (job.getStatus() == JobStatus.COMPLETED || job.getStatus() == JobStatus.CANCELLED) {
+            throw new com.techgarage.exception.BadRequestException("A closed job cannot be disputed");
+        }
+        if (disputeRepository.existsByJobIdAndStatus(jobId, DisputeStatus.OPEN)) {
+            throw new com.techgarage.exception.BadRequestException("This job already has an open dispute");
+        }
 
         Dispute dispute = Dispute.builder()
                 .job(job)
@@ -173,6 +194,7 @@ public class AdminServiceImpl implements AdminService {
                 .reason(request.getReason())
                 .description(request.getDescription())
                 .status(DisputeStatus.OPEN)
+                .previousJobStatus(job.getStatus())
                 .build();
         dispute = disputeRepository.save(dispute);
 
@@ -190,16 +212,54 @@ public class AdminServiceImpl implements AdminService {
     }
 
     @Override
+    @Transactional
     public Dispute resolveDispute(Long disputeId, DisputeResolveRequest request) {
         Dispute dispute = disputeRepository.findById(disputeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Dispute not found"));
+        if (dispute.getStatus() == DisputeStatus.RESOLVED || dispute.getStatus() == DisputeStatus.REJECTED) {
+            throw new com.techgarage.exception.BadRequestException("This dispute has already been closed");
+        }
+        if (request.getStatus() == DisputeStatus.UNDER_REVIEW && request.getAction() != null) {
+            throw new com.techgarage.exception.BadRequestException("Resolution action is only used when closing a dispute");
+        }
+        if ((request.getStatus() == DisputeStatus.RESOLVED || request.getStatus() == DisputeStatus.REJECTED) && request.getAction() == null) {
+            throw new com.techgarage.exception.BadRequestException("Choose a resolution action");
+        }
         dispute.setStatus(request.getStatus());
         dispute.setAdminResponse(request.getAdminResponse());
+        if (request.getStatus() == DisputeStatus.RESOLVED || request.getStatus() == DisputeStatus.REJECTED) {
+            Job job = dispute.getJob();
+            var action = request.getStatus() == DisputeStatus.REJECTED ? DisputeResolutionAction.RESUME : request.getAction();
+            dispute.setResolutionAction(action);
+            dispute.setResolvedAt(java.time.LocalDateTime.now());
+            if (action == DisputeResolutionAction.RESUME) {
+                JobStatus restore = dispute.getPreviousJobStatus() == null ? JobStatus.IN_PROGRESS : dispute.getPreviousJobStatus();
+                if (restore == JobStatus.DISPUTED || restore == JobStatus.COMPLETED || restore == JobStatus.CANCELLED) restore = JobStatus.IN_PROGRESS;
+                job.setStatus(restore);
+                job.getProblem().setStatus(restore == JobStatus.IN_PROGRESS ? ProblemStatus.IN_PROGRESS : ProblemStatus.ASSIGNED);
+                jobRepository.save(job); problemRepository.save(job.getProblem());
+            } else if (action == DisputeResolutionAction.REFUND_AND_CANCEL) {
+                if (job.getPaymentStatus() == PaymentStatus.HELD) {
+                    paymentService.refundPayment(job);
+                }
+                job.setStatus(JobStatus.CANCELLED); job.getProblem().setStatus(ProblemStatus.CANCELLED);
+                jobRepository.save(job); problemRepository.save(job.getProblem());
+            } else if (action == DisputeResolutionAction.RELEASE_AND_COMPLETE) {
+                if (job.getStatus() != JobStatus.COMPLETED) {
+                    job.setStatus(JobStatus.COMPLETED); job.setCompletedAt(java.time.LocalDateTime.now());
+                    paymentService.releasePayment(job);
+                    job.getProblem().setStatus(ProblemStatus.COMPLETED);
+                    freelancerProfileRepository.findByUserId(job.getFreelancer().getId()).ifPresent(profile -> {
+                        profile.setTotalEarnings(profile.getTotalEarnings() + paymentService.getFreelancerNetAmount(job));
+                        freelancerProfileRepository.save(profile);
+                    });
+                    jobRepository.save(job); problemRepository.save(job.getProblem());
+                }
+            }
+        }
         dispute = disputeRepository.save(dispute);
-
-        notificationService.notify(dispute.getRaisedBy().getId(),
-                "Your dispute on Job #" + dispute.getJob().getId() + " was updated: " + request.getStatus());
-
+        notificationService.notify(dispute.getJob().getClient().getId(), "Dispute on Job #" + dispute.getJob().getId() + " was updated: " + request.getStatus());
+        notificationService.notify(dispute.getJob().getFreelancer().getId(), "Dispute on Job #" + dispute.getJob().getId() + " was updated: " + request.getStatus());
         return dispute;
     }
 }

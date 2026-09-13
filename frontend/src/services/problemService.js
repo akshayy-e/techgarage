@@ -1,6 +1,7 @@
 import api, { unwrap } from './api'
 
 export const problemService = {
+  getEmergency: () => unwrap(api.get('/problems/emergency')),
   create: (payload) => unwrap(api.post('/problems', payload)),
   aiSuggest: (payload) => unwrap(api.post('/problems/ai-suggest', payload)),
   getAllOpen: () => unwrap(api.get('/problems')),

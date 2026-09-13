@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { authService } from '../services/authService'
 
 const AuthContext = createContext(null)
@@ -8,6 +8,15 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem('tg_user')
     return stored ? JSON.parse(stored) : null
   })
+
+  useEffect(() => {
+    const syncProfile = () => {
+      const stored = localStorage.getItem('tg_user')
+      if (stored) setUser(JSON.parse(stored))
+    }
+    window.addEventListener('tg-profile-updated', syncProfile)
+    return () => window.removeEventListener('tg-profile-updated', syncProfile)
+  }, [])
 
   const persist = (authResponse) => {
     localStorage.setItem('tg_token', authResponse.token)

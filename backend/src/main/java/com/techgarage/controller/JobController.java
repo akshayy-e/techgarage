@@ -51,4 +51,19 @@ public class JobController {
     public ResponseEntity<ApiResponse<JobResponse>> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok("Job cancelled", jobService.cancel(id)));
     }
+
+    @GetMapping("/{id}/change-requests")
+    public ResponseEntity<ApiResponse<List<ChangeRequestResponse>>> getChangeRequests(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(jobService.getChangeRequests(id)));
+    }
+
+    @PostMapping("/{id}/change-requests")
+    public ResponseEntity<ApiResponse<ChangeRequestResponse>> createChangeRequest(@PathVariable Long id, @Valid @RequestBody ChangeRequestCreate request) {
+        return ResponseEntity.status(201).body(ApiResponse.ok("Change request created", jobService.createChangeRequest(id, request)));
+    }
+
+    @PutMapping("/change-requests/{changeRequestId}/respond")
+    public ResponseEntity<ApiResponse<ChangeRequestResponse>> respondToChangeRequest(@PathVariable Long changeRequestId, @RequestParam boolean accept) {
+        return ResponseEntity.ok(ApiResponse.ok("Change request updated", jobService.respondToChangeRequest(changeRequestId, accept)));
+    }
 }

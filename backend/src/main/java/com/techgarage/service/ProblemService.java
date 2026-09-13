@@ -11,6 +11,7 @@ public interface ProblemService {
     ProblemAiSuggestionResponse getAiSuggestion(ProblemAiSuggestionRequest request);
     ProblemResponse getById(Long id);
     List<ProblemResponse> getAllOpen();
+    List<ProblemResponse> getEmergencyOpen();
     List<ProblemResponse> getMyProblems();
     ProblemResponse update(Long id, ProblemRequest request);
     void delete(Long id);

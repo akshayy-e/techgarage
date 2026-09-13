@@ -47,6 +47,7 @@ export default function Login() {
             <input id="password" type="password" className="input" required
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </div>
+          <div style={{ textAlign: 'right', marginBottom: 12, fontSize: 13 }}><Link to="/forgot-password">Forgot password?</Link></div>
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
             {loading ? 'Logging in…' : 'Log In'}
           </button>

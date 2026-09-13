@@ -39,6 +39,11 @@ public class ProblemController {
         return ResponseEntity.ok(ApiResponse.ok(problemService.getAllOpen()));
     }
 
+    @GetMapping("/emergency")
+    public ResponseEntity<ApiResponse<List<ProblemResponse>>> getEmergencyOpen() {
+        return ResponseEntity.ok(ApiResponse.ok(problemService.getEmergencyOpen()));
+    }
+
     @GetMapping("/mine")
     public ResponseEntity<ApiResponse<List<ProblemResponse>>> getMine() {
         return ResponseEntity.ok(ApiResponse.ok(problemService.getMyProblems()));

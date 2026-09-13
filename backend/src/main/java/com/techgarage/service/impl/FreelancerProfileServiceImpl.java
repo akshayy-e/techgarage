@@ -25,14 +25,15 @@ public class FreelancerProfileServiceImpl implements FreelancerProfileService {
     @Override
     public FreelancerProfileResponse getMyProfile() {
         User me = securityUtil.getCurrentUser();
-        return getByUserId(me.getId());
+        return toResponse(freelancerProfileRepository.findByUserId(me.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Freelancer profile not found")), false);
     }
 
     @Override
     public FreelancerProfileResponse getByUserId(Long userId) {
         FreelancerProfile profile = freelancerProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Freelancer profile not found"));
-        return toResponse(profile);
+        return toResponse(profile, true);
     }
 
     @Override
@@ -52,22 +53,34 @@ public class FreelancerProfileServiceImpl implements FreelancerProfileService {
         if (request.getAvailability() != null) profile.setAvailability(request.getAvailability());
 
         profile = freelancerProfileRepository.save(profile);
-        return toResponse(profile);
+        return toResponse(profile, false);
     }
 
     @Override
     public List<FreelancerProfileResponse> getAll() {
         return freelancerProfileRepository.findAll().stream()
-                .map(this::toResponse)
+                .map(p -> toResponse(p, false))
                 .collect(Collectors.toList());
     }
 
-    private FreelancerProfileResponse toResponse(FreelancerProfile p) {
+    private int profileCompletion(FreelancerProfile p) {
+        int complete = 0;
+        if (p.getUser() != null && p.getUser().getName() != null && !p.getUser().getName().isBlank()) complete++;
+        if (p.getBio() != null && !p.getBio().isBlank()) complete++;
+        if (p.getSkills() != null && !p.getSkills().isBlank()) complete++;
+        if (p.getExperienceYears() != null) complete++;
+        if (p.getHourlyRate() != null && p.getHourlyRate() > 0) complete++;
+        if (p.getPortfolio() != null && !p.getPortfolio().isBlank()) complete++;
+        if (p.getUser().isEmailVerified()) complete++;
+        return Math.round((complete / 7f) * 100);
+    }
+
+    private FreelancerProfileResponse toResponse(FreelancerProfile p, boolean publicView) {
         return FreelancerProfileResponse.builder()
                 .id(p.getId())
                 .userId(p.getUser().getId())
                 .name(p.getUser().getName())
-                .email(p.getUser().getEmail())
+                .email(publicView ? null : p.getUser().getEmail())
                 .bio(p.getBio())
                 .experienceYears(p.getExperienceYears())
                 .skills(p.getSkills())
@@ -75,9 +88,11 @@ public class FreelancerProfileServiceImpl implements FreelancerProfileService {
                 .hourlyRate(p.getHourlyRate())
                 .availability(p.getAvailability())
                 .verified(p.getVerified())
+                .emailVerified(publicView ? null : p.getUser().isEmailVerified())
+                .profileCompletion(profileCompletion(p))
                 .rating(p.getRating())
                 .totalReviews(p.getTotalReviews())
-                .totalEarnings(p.getTotalEarnings())
+                .totalEarnings(publicView ? null : p.getTotalEarnings())
                 .build();
     }
 }

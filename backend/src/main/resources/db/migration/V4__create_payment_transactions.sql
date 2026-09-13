@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    job_id BIGINT NOT NULL,
+    amount DOUBLE NOT NULL,
+    platform_fee DOUBLE NOT NULL,
+    freelancer_amount DOUBLE NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'INR',
+    gateway VARCHAR(40) NOT NULL DEFAULT 'RAZORPAY',
+    gateway_order_id VARCHAR(255) NOT NULL,
+    gateway_payment_id VARCHAR(255) NULL,
+    status VARCHAR(40) NOT NULL,
+    failure_reason VARCHAR(1000) NULL,
+    refund_id VARCHAR(255) NULL,
+    created_at DATETIME NULL,
+    captured_at DATETIME NULL,
+    refunded_at DATETIME NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_payment_gateway_order (gateway_order_id),
+    UNIQUE KEY uk_payment_gateway_payment (gateway_payment_id),
+    KEY idx_payment_job (job_id),
+    CONSTRAINT fk_payment_job FOREIGN KEY (job_id) REFERENCES jobs(id)
+);

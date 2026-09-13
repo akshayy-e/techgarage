@@ -31,6 +31,14 @@ public class Dispute {
     @Builder.Default
     private DisputeStatus status = DisputeStatus.OPEN;
 
+    @Enumerated(EnumType.STRING)
+    private JobStatus previousJobStatus;
+
+    @Enumerated(EnumType.STRING)
+    private DisputeResolutionAction resolutionAction;
+
+    private LocalDateTime resolvedAt;
+
     @Column(length = 2000)
     private String adminResponse;
 

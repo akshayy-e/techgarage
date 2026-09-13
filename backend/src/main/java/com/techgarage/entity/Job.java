@@ -52,6 +52,5 @@ public class Job {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        startedAt = LocalDateTime.now();
     }
 }

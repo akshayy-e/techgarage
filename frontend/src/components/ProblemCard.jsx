@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { categoryLabels, formatCurrency, formatDate, problemTicketNumber, statusBadgeClass, humanStatus } from '../utils/format'
+import { resolveFileUrl } from '../services/api'
 
 export default function ProblemCard({ problem, viewPath }) {
   return (
@@ -20,6 +21,7 @@ export default function ProblemCard({ problem, viewPath }) {
           <span className="badge badge-neutral">{categoryLabels[problem.category] || problem.category}</span>
           {problem.technology && <span className="badge badge-neutral">{problem.technology}</span>}
           <span className="badge badge-neutral">{problem.priority}</span>
+          {problem.attachmentUrl && <a href={resolveFileUrl(problem.attachmentUrl)} target="_blank" rel="noreferrer" className="badge badge-neutral">📎</a>}
         </div>
         <div className="flex-between">
           <div>

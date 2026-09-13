@@ -22,6 +22,12 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.ok(notificationService.getMyNotifications()));
     }
 
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Object>> clearMine() {
+        notificationService.clearMine();
+        return ResponseEntity.ok(ApiResponse.ok("Notifications cleared", null));
+    }
+
     @GetMapping("/unread-count")
     public ResponseEntity<ApiResponse<Map<String, Long>>> unreadCount() {
         return ResponseEntity.ok(ApiResponse.ok(Map.of("count", notificationService.unreadCount())));

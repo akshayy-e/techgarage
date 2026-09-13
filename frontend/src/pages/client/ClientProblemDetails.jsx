@@ -7,6 +7,8 @@ import ProposalCard from '../../components/ProposalCard'
 import Spinner from '../../components/Spinner'
 import EmptyState from '../../components/EmptyState'
 import { categoryLabels, formatCurrency, formatDate, humanStatus, problemTicketNumber, statusBadgeClass } from '../../utils/format'
+import { resolveFileUrl } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 
 export default function ClientProblemDetails() {
   const { id } = useParams()
@@ -17,18 +19,18 @@ export default function ClientProblemDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionError, setActionError] = useState('')
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
 
   const load = async () => {
     try {
       const p = await problemService.getById(id)
       setProblem(p)
-      const props = await proposalService.getForProblem(id)
-      setProposals(props)
-      if (['ASSIGNED', 'IN_PROGRESS', 'SUBMITTED', 'REVISION_REQUESTED', 'COMPLETED', 'DISPUTED'].includes(p.status)) {
-        const jobs = await jobService.getMine()
-        const relatedJob = jobs.find((j) => j.problemId === Number(id))
-        setJob(relatedJob || null)
-      }
+      const requests = [proposalService.getForProblem(id)]
+      if (['ASSIGNED', 'IN_PROGRESS', 'SUBMITTED', 'REVISION_REQUESTED', 'COMPLETED', 'DISPUTED'].includes(p.status)) requests.push(jobService.getMine())
+      const results = await Promise.all(requests)
+      setProposals(results[0])
+      if (results[1]) setJob(results[1].find((j) => j.problemId === Number(id)) || null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -65,7 +67,7 @@ export default function ClientProblemDetails() {
   return (
     <div className="container">
       <div className="mb-16">
-        <Link to="/client/dashboard">← Back to dashboard</Link>
+        <Link to={isAdmin ? '/admin/problems' : '/client/dashboard'}>← Back to dashboard</Link>
       </div>
 
       <div className="ticket-card mb-24">
@@ -81,7 +83,7 @@ export default function ClientProblemDetails() {
             {problem.technology && <span className="badge badge-neutral">{problem.technology}</span>}
             <span className="badge badge-neutral">{problem.priority}</span>
             {problem.attachmentUrl && (
-              <a href={`http://localhost:8080${problem.attachmentUrl}`} target="_blank" rel="noreferrer" className="badge badge-neutral">📎 Attachment</a>
+              <a href={resolveFileUrl(problem.attachmentUrl)} target="_blank" rel="noreferrer" className="badge badge-neutral">📎 Attachment</a>
             )}
           </div>
           <div className="grid grid-3">
@@ -117,7 +119,7 @@ export default function ClientProblemDetails() {
             <EmptyState glyph="📭" title="No proposals yet" subtitle="Freelancers will see this problem in their dashboard and can submit proposals." />
           ) : (
             proposals.map((p) => (
-              <ProposalCard key={p.id} proposal={p} showActions onAccept={handleAccept} onReject={handleReject} />
+              <ProposalCard key={p.id} proposal={p} showActions={!isAdmin} onAccept={handleAccept} onReject={handleReject} />
             ))
           )}
         </>

@@ -58,8 +58,8 @@ export default function Register() {
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input id="password" type="password" className="input" required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-            <div className="form-hint">At least 6 characters.</div>
+            <input id="password" type="password" className="input" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <div className="form-hint">At least 8 characters.</div>
           </div>
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
             {loading ? 'Creating account…' : 'Create Account'}

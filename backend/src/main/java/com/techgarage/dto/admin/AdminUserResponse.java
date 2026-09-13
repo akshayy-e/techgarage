@@ -24,4 +24,5 @@ public class AdminUserResponse {
 
     /** Null for non-freelancers (clients/admins have no freelancer profile). */
     private Boolean verified;
+    private boolean emailVerified;
 }

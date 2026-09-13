@@ -8,6 +8,7 @@ export default function AdminUsers() {
   const [tab, setTab] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [workingId, setWorkingId] = useState(null)
 
   const load = async () => {
     try {
@@ -21,24 +22,29 @@ export default function AdminUsers() {
 
   useEffect(() => { load() }, [])
 
-  const handleVerify = async (userId) => {
-    try {
-      await adminService.verifyFreelancer(userId)
-      await load()
-    } catch (err) {
-      setError(err.message)
+  const handleVerify = async (user) => {
+    if (!user.emailVerified) {
+      setError('This freelancer must verify their email before profile verification is available.')
+      return
     }
+    if (!window.confirm(`Verify ${user.name}'s freelancer profile?`)) return
+    setError(''); setWorkingId(`verify-${user.id}`)
+    try { await adminService.verifyFreelancer(user.id); await load() }
+    catch (err) { setError(err.message) }
+    finally { setWorkingId(null) }
   }
 
   const handleToggleSuspend = async (user) => {
+    if (!window.confirm(`${user.enabled ? 'Suspend' : 'Reactivate'} ${user.name}?`)) return
+    setError(''); setWorkingId(`status-${user.id}`)
     try {
       if (user.enabled) await adminService.suspendUser(user.id)
       else await adminService.reactivateUser(user.id)
       await load()
-    } catch (err) {
-      setError(err.message)
-    }
+    } catch (err) { setError(err.message) }
+    finally { setWorkingId(null) }
   }
+
 
   if (loading) return <Spinner page />
 
@@ -62,7 +68,7 @@ export default function AdminUsers() {
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th>Email verification</th><th>Joined</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {filtered.map((u) => (
@@ -77,6 +83,7 @@ export default function AdminUsers() {
                 </td>
                 <td>{u.email}</td>
                 <td><span className="badge badge-neutral">{u.role}</span></td>
+                <td>{u.role === 'FREELANCER' ? (u.emailVerified ? <span className="badge badge-completed">✓ Email verified</span> : <span className="badge badge-danger">⚠ Email not verified</span>) : <span className="badge badge-neutral">—</span>}</td>
                 <td>{formatDate(u.createdAt)}</td>
                 <td>
                   <span className={`badge ${u.enabled ? 'badge-completed' : 'badge-danger'}`}>{u.enabled ? 'Active' : 'Suspended'}</span>
@@ -86,11 +93,11 @@ export default function AdminUsers() {
                     {u.role === 'FREELANCER' && (
                       u.verified
                         ? <button className="btn btn-outline btn-sm" disabled>Verified</button>
-                        : <button className="btn btn-outline btn-sm" onClick={() => handleVerify(u.id)}>Verify</button>
+                        : <button className="btn btn-outline btn-sm" disabled={!u.emailVerified || workingId === `verify-${u.id}`} onClick={() => handleVerify(u)}>{workingId === `verify-${u.id}` ? 'Verifying…' : 'Verify'}</button>
                     )}
                     {u.role !== 'ADMIN' && (
                       <button className="btn btn-sm" style={{ background: u.enabled ? 'var(--color-danger-bg)' : 'var(--color-success-bg)', color: u.enabled ? 'var(--color-danger)' : 'var(--color-success)' }}
-                        onClick={() => handleToggleSuspend(u)}>
+                        disabled={workingId === `status-${u.id}`} onClick={() => handleToggleSuspend(u)}>
                         {u.enabled ? 'Suspend' : 'Reactivate'}
                       </button>
                     )}

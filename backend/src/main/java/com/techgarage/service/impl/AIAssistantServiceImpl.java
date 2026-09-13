@@ -73,14 +73,14 @@ public class AIAssistantServiceImpl implements AIAssistantService {
 
             List<String> questions = new ArrayList<>();
             if (ai.path("clarifyingQuestions").isArray()) {
+                List<String> finalQuestions = questions;
                 ai.path("clarifyingQuestions").forEach(q -> {
                     String s = q.asText(null);
-                    if (s != null && !s.isBlank()) questions.add(s);
+                    if (s != null && !s.isBlank()) finalQuestions.add(s);
                 });
             }
             if (questions.isEmpty()) {
-                // FIX: Use addAll() to mutate the list instead of reassigning the variable
-                questions.addAll(defaultClarifyingQuestions(category));
+                questions = defaultClarifyingQuestions(category);
             }
 
             double budgetMin = ai.path("budgetMin").asDouble(defaultBudgetMin(priority, category));

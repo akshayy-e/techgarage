@@ -15,6 +15,7 @@ import com.techgarage.service.AIClassificationService;
 import com.techgarage.service.ProblemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -68,6 +69,14 @@ public class ProblemServiceImpl implements ProblemService {
     public ProblemResponse getById(Long id) {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found"));
+        User me = securityUtil.getCurrentUser();
+        boolean owner = problem.getClient().getId().equals(me.getId());
+        boolean admin = me.getRole() == Role.ADMIN;
+        boolean freelancerCanView = me.getRole() == Role.FREELANCER
+                && (problem.getStatus() == ProblemStatus.OPEN || problem.getStatus() == ProblemStatus.PROPOSALS_RECEIVED);
+        if (!owner && !admin && !freelancerCanView) {
+            throw new ForbiddenException("You do not have access to this problem");
+        }
         return toResponse(problem);
     }
 
@@ -75,6 +84,15 @@ public class ProblemServiceImpl implements ProblemService {
     public List<ProblemResponse> getAllOpen() {
         return problemRepository.findAllByOrderByCreatedAtDesc().stream()
                 .filter(p -> p.getStatus() == ProblemStatus.OPEN || p.getStatus() == ProblemStatus.PROPOSALS_RECEIVED)
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProblemResponse> getEmergencyOpen() {
+        return problemRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(p -> (p.getStatus() == ProblemStatus.OPEN || p.getStatus() == ProblemStatus.PROPOSALS_RECEIVED)
+                        && p.getPriority() == Priority.EMERGENCY)
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -113,6 +131,7 @@ public class ProblemServiceImpl implements ProblemService {
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
         Problem problem = problemRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Problem not found"));
@@ -120,11 +139,17 @@ public class ProblemServiceImpl implements ProblemService {
         if (!problem.getClient().getId().equals(me.getId()) && me.getRole() != Role.ADMIN) {
             throw new ForbiddenException("You can only delete your own problems");
         }
+        if (problem.getStatus() != ProblemStatus.OPEN && me.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("Only open problems can be deleted");
+        }
+        if (!proposalRepository.findByProblemIdOrderByCreatedAtDesc(id).isEmpty() && me.getRole() != Role.ADMIN) {
+            throw new ForbiddenException("A problem with proposals cannot be deleted");
+        }
         problemRepository.delete(problem);
     }
 
     private ProblemResponse toResponse(Problem p) {
-        long proposalCount = proposalRepository.findByProblemIdOrderByCreatedAtDesc(p.getId()).size();
+        long proposalCount = proposalRepository.countByProblemId(p.getId());
         return ProblemResponse.builder()
                 .id(p.getId())
                 .clientId(p.getClient().getId())

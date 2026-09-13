@@ -9,4 +9,7 @@ export const jobService = {
   complete: (id) => unwrap(api.post(`/jobs/${id}/complete`)),
   cancel: (id) => unwrap(api.post(`/jobs/${id}/cancel`)),
   raiseDispute: (id, payload) => unwrap(api.post(`/jobs/${id}/disputes`, payload)),
+  getChangeRequests: (id) => unwrap(api.get(`/jobs/${id}/change-requests`)),
+  createChangeRequest: (id, payload) => unwrap(api.post(`/jobs/${id}/change-requests`, payload)),
+  respondToChangeRequest: (changeRequestId, accept) => unwrap(api.put(`/jobs/change-requests/${changeRequestId}/respond`, null, { params: { accept } })),
 }

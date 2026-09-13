@@ -13,6 +13,7 @@ import com.techgarage.service.PaymentService;
 import com.techgarage.service.ProposalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -88,6 +89,7 @@ public class ProposalServiceImpl implements ProposalService {
     }
 
     @Override
+    @Transactional
     public ProposalResponse accept(Long proposalId) {
         Proposal proposal = proposalRepository.findById(proposalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Proposal not found"));
@@ -99,6 +101,9 @@ public class ProposalServiceImpl implements ProposalService {
         }
         if (proposal.getStatus() != ProposalStatus.PENDING) {
             throw new BadRequestException("This proposal has already been processed");
+        }
+        if (jobRepository.existsByProblemId(problem.getId())) {
+            throw new BadRequestException("This problem already has an assigned job");
         }
 
         proposal.setStatus(ProposalStatus.ACCEPTED);
@@ -123,13 +128,14 @@ public class ProposalServiceImpl implements ProposalService {
                 .agreedPrice(proposal.getPrice())
                 .status(JobStatus.ASSIGNED)
                 .build();
-        paymentService.holdPayment(job);
+        // Payment remains PENDING until the client completes the online checkout.
+        // The freelancer cannot start work until a verified gateway payment moves it to HELD.
         job = jobRepository.save(job);
 
         notificationService.notify(proposal.getFreelancer().getId(),
-                "Congratulations! Your proposal for \"" + problem.getTitle() + "\" was accepted. Job #" + job.getId() + " has started.");
+                "Congratulations! Your proposal for \"" + problem.getTitle() + "\" was accepted. Job #" + job.getId() + " is awaiting client payment.");
         notificationService.notify(problem.getClient().getId(),
-                "You accepted " + proposal.getFreelancer().getName() + "'s proposal. Job #" + job.getId() + " has started.");
+                "You accepted " + proposal.getFreelancer().getName() + "'s proposal. Job #" + job.getId() + " is awaiting client payment.");
 
         return toResponse(proposal);
     }

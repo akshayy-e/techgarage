@@ -9,6 +9,8 @@ export default function AdminDisputes() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [responses, setResponses] = useState({})
+  const [actions, setActions] = useState({})
+  const [workingId, setWorkingId] = useState(null)
 
   const load = async () => {
     try {
@@ -23,12 +25,16 @@ export default function AdminDisputes() {
   useEffect(() => { load() }, [])
 
   const handleResolve = async (id, status) => {
+    const action = status === 'REJECTED' ? 'RESUME' : (actions[id] || 'RESUME')
+    const verb = status === 'REJECTED' ? 'reject this dispute' : 'resolve this dispute'
+    if (!window.confirm(`Are you sure you want to ${verb}? This may change the job and payment state.`)) return
+    setWorkingId(id); setError('')
     try {
-      await adminService.resolveDispute(id, { status, adminResponse: responses[id] || '' })
+      await adminService.resolveDispute(id, { status, action, adminResponse: responses[id] || '' })
       await load()
     } catch (err) {
       setError(err.message)
-    }
+    } finally { setWorkingId(null) }
   }
 
   if (loading) return <Spinner page />
@@ -60,9 +66,17 @@ export default function AdminDisputes() {
               <>
                 <textarea className="textarea mb-8" placeholder="Write your resolution notes…"
                   value={responses[d.id] || ''} onChange={(e) => setResponses({ ...responses, [d.id]: e.target.value })} />
+                <div className="form-group">
+                  <label>Resolution action</label>
+                  <select className="input" value={actions[d.id] || 'RESUME'} onChange={(e) => setActions({ ...actions, [d.id]: e.target.value })}>
+                    <option value="RESUME">Resume job</option>
+                    <option value="REFUND_AND_CANCEL">Refund client &amp; cancel job</option>
+                    <option value="RELEASE_AND_COMPLETE">Release payment &amp; complete job</option>
+                  </select>
+                </div>
                 <div className="flex gap-8">
-                  <button className="btn btn-primary btn-sm" onClick={() => handleResolve(d.id, 'RESOLVED')}>Mark Resolved</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => handleResolve(d.id, 'REJECTED')}>Reject Dispute</button>
+                  <button className="btn btn-primary btn-sm" disabled={workingId === d.id} onClick={() => handleResolve(d.id, 'RESOLVED')}>{workingId === d.id ? 'Saving…' : 'Mark Resolved'}</button>
+                  <button className="btn btn-outline btn-sm" disabled={workingId === d.id} onClick={() => handleResolve(d.id, 'REJECTED')}>{workingId === d.id ? 'Saving…' : 'Reject Dispute'}</button>
                 </div>
               </>
             )}

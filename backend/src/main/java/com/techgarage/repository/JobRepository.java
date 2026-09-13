@@ -10,6 +10,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findByClientIdOrderByCreatedAtDesc(Long clientId);
     List<Job> findByFreelancerIdOrderByCreatedAtDesc(Long freelancerId);
     Optional<Job> findByProblemId(Long problemId);
+    boolean existsByProblemId(Long problemId);
     long countByClientIdAndStatus(Long clientId, JobStatus status);
     long countByFreelancerIdAndStatus(Long freelancerId, JobStatus status);
     long countByStatus(JobStatus status);

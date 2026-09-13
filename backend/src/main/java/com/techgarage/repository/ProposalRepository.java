@@ -12,4 +12,5 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     Optional<Proposal> findByProblemIdAndFreelancerId(Long problemId, Long freelancerId);
     List<Proposal> findByProblemIdAndStatus(Long problemId, ProposalStatus status);
     long countByFreelancerIdAndStatus(Long freelancerId, ProposalStatus status);
+    long countByProblemId(Long problemId);
 }
