@@ -1,0 +1,5 @@
+package com.techgarage.entity;
+
+public enum ProblemStatus {
+    OPEN, PROPOSALS_RECEIVED, ASSIGNED, IN_PROGRESS, SUBMITTED, REVISION_REQUESTED, COMPLETED, CANCELLED, DISPUTED
+}

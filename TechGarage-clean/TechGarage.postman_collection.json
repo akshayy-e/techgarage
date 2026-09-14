@@ -1,0 +1,184 @@
+{
+  "info": {
+    "name": "TechGarage API",
+    "description": "API testing collection for the TechGarage software-repair marketplace prototype.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "clientToken", "value": "" },
+    { "key": "freelancerToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "problemId", "value": "" },
+    { "key": "proposalId", "value": "" },
+    { "key": "jobId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Register Client",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Demo Client\",\n  \"email\": \"demo.client@example.com\",\n  \"password\": \"Password@123\",\n  \"role\": \"CLIENT\"\n}"
+        }
+      }
+    },
+    {
+      "name": "2. Login Client",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"client1@techgarage.com\",\n  \"password\": \"Client@123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Register Freelancer",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/register",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Demo Freelancer\",\n  \"email\": \"demo.freelancer@example.com\",\n  \"password\": \"Password@123\",\n  \"role\": \"FREELANCER\"\n}"
+        }
+      }
+    },
+    {
+      "name": "4. Create Problem",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/problems",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"React website bug\",\n  \"description\": \"Buttons stop responding after navigation.\",\n  \"category\": \"FRONTEND\",\n  \"technology\": \"React\",\n  \"priority\": \"HIGH\",\n  \"budget\": 150\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Get All Open Problems",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{freelancerToken}}" }],
+        "url": "{{baseUrl}}/api/problems"
+      }
+    },
+    {
+      "name": "6. Submit Proposal",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{freelancerToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/problems/{{problemId}}/proposals",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"price\": 140,\n  \"estimatedDays\": 2,\n  \"message\": \"I can fix this quickly.\"\n}"
+        }
+      }
+    },
+    {
+      "name": "7. Accept Proposal",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{clientToken}}" }],
+        "url": "{{baseUrl}}/api/proposals/{{proposalId}}/accept"
+      }
+    },
+    {
+      "name": "8. Get My Jobs",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{freelancerToken}}" }],
+        "url": "{{baseUrl}}/api/jobs"
+      }
+    },
+    {
+      "name": "9. Update Job Status (IN_PROGRESS)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{freelancerToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/jobs/{{jobId}}/status",
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}" }
+      }
+    },
+    {
+      "name": "10. Send Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{freelancerToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/jobs/{{jobId}}/messages",
+        "body": { "mode": "raw", "raw": "{\n  \"message\": \"Found the bug, fixing now.\"\n}" }
+      }
+    },
+    {
+      "name": "11. Submit Solution",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{freelancerToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/jobs/{{jobId}}/submit-solution",
+        "body": { "mode": "raw", "raw": "{\n  \"solutionNotes\": \"Fixed stale event listener after route change.\"\n}" }
+      }
+    },
+    {
+      "name": "12. Complete Job",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{clientToken}}" }],
+        "url": "{{baseUrl}}/api/jobs/{{jobId}}/complete"
+      }
+    },
+    {
+      "name": "13. Submit Review",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/jobs/{{jobId}}/review",
+        "body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Excellent work!\"\n}" }
+      }
+    },
+    {
+      "name": "14. Admin Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@techgarage.com\",\n  \"password\": \"Admin@123\"\n}"
+        }
+      }
+    },
+    {
+      "name": "15. Admin Stats",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": "{{baseUrl}}/api/admin/stats"
+      }
+    }
+  ]
+}
